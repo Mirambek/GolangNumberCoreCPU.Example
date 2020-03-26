@@ -20,14 +20,18 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	var processedList = make(map[int]int)
 	var result = make([]string, 0)
+	var wg sync.WaitGroup
 	var mutex = &sync.Mutex{}
 	url := make(chan string, numberCores)
 	counter := 0
 	for ii := 0; ii < numberCores; ii++ {
+		wg.Add(1)
 		go func(urlCh <-chan string, id int) {
+			defer wg.Done()
 			for {
 				url, more := <-urlCh
 				if more == false {
+
 					return
 				}
 				start := time.Now()
@@ -67,16 +71,13 @@ S:
 	if scanner.Err() != nil {
 		fmt.Println(scanner.Err())
 	}
-	mutex.Lock()
+	close(url)
+	wg.Wait()
 	for _, v := range result {
 		fmt.Printf("%s\n", v)
 	}
-	mutex.Unlock()
-	close(url)
-	mutex.Lock()
 	fmt.Println("<порядковый номер паралельного потока запросов>:<число запросов>")
 	for k, v := range processedList {
 		fmt.Printf("%d:%d\n", k, v)
 	}
-	mutex.Unlock()
 }
